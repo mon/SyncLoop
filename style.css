@@ -6,10 +6,6 @@ html, body {
   background-color: black;
 }
 
-#loop {
-    height: 100%;
-}
-
 #preloadHelper {
     background-color: #FFF; 
     width: 100%;

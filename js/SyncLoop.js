@@ -156,7 +156,7 @@ SyncLoop.prototype.animationLoop = function() {
         this.lastFrame = frame;
         // Clear
         this.canvas.canvas.width = this.canvas.canvas.width;
-        this.canvas.drawImage(this.images[frame], 0, 0);
+        this.canvas.drawImage(this.images[frame], 0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
     }
 }
 
@@ -165,18 +165,25 @@ SyncLoop.prototype.resize = function() {
         return;
     }
     var elem = this.canvas.canvas;
+    
+    // Set unscaled
     var width = this.images[0].width;
     var height = this.images[0].height;
     var ratio = width / height;
-    elem.width = width;
-    elem.height = height;
     
-    elem.style.height = "100%";
-    if (elem.clientWidth > window.innerWidth) {
-        elem.style.height = (window.innerWidth / ratio) + "px";
+    var scaleWidth = window.innerHeight * ratio;
+    if(scaleWidth > window.innerWidth) {
+        elem.height = Math.floor(window.innerWidth / ratio);
+        elem.width = Math.floor(window.innerWidth);
+    } else {
+        elem.height = Math.floor(window.innerHeight);
+        elem.width = Math.floor(scaleWidth);
     }
-    elem.style.marginLeft = (window.innerWidth - elem.clientWidth) / 2 + "px";
-    elem.style.marginTop = (window.innerHeight - elem.clientHeight) / 2 + "px";
+    elem.style.height = elem.height + "px";
+    elem.style.width = elem.width + "px";
+    
+    elem.style.marginLeft = (window.innerWidth - elem.width) / 2 + "px";
+    elem.style.marginTop = (window.innerHeight - elem.height) / 2 + "px";
 }
 
 SyncLoop.prototype.keyHandler = function(key) {
