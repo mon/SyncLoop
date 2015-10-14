@@ -1,0 +1,38 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en" >
+    <head>
+        <meta http-equiv="content-type" content="text/html; charset=utf-8" />
+        <title>Am I Poplar Yet?</title>
+        <link rel="stylesheet" href="style.css">
+        <script type="text/javascript" src="js/SyncLoop.js"></script>
+        <script type="text/javascript" src="js/SoundManager.js"></script>
+        <script type="text/javascript">
+            window.onload = function() {
+                var defaults = {
+                    canvasID : "loop",
+                    song : {
+                        name : "Lemaitre - Cut to Black",
+                        filename : "./poplar/Lemaitre - Cut to Black.mp3",
+                        beatsPerLoop : 48
+                    },
+                    animation : {
+                        filename : "./poplar/Image %FRAME%.jpg",
+                        frames : 46,
+                        beatsPerLoop : 4,
+                        syncOffset : 10
+                    }
+                };
+                loop = new SyncLoop(defaults);
+            };
+        </script>
+    </head>
+    <body>
+        <div id="preloadHelper">
+            <div id="preloader">
+                <div id="preMain">0%</div>
+                <div id="preSub"></div>
+            </div>
+        </div>
+        <canvas id="loop"></canvas>
+    </body>
+</html>

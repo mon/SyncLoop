@@ -1,0 +1,47 @@
+html, body {
+  width:  100%;
+  height: 100%;
+  margin: 0px;
+  overflow: hidden;
+  background-color: black;
+}
+
+#loop {
+    height: 100%;
+}
+
+#preloadHelper {
+    background-color: #FFF; 
+    width: 100%;
+    height: 100%;
+    display:-webkit-flex;
+    display:flex;
+    -webkit-justify-content:center;
+    justify-content:center;
+    -webkit-align-items:center;
+    align-items:center;
+    -webkit-flex-direction: column;
+    flex-direction: column;
+    font-size: 25pt;
+    
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+    opacity: 1;
+    transition: opacity 1s linear;
+    -webkit-transition: opacity 1s linear;
+}
+
+#preloadHelper.loaded {
+    opacity: 0;
+}
+
+#preloader {
+    display: block;
+    text-align: center;
+}
+
+#preSub {
+    font-size: 12pt;
+}
