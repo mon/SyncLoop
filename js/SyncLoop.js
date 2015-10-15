@@ -18,6 +18,9 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
+ 
+// how many frames before we resync the video
+var videoSyncEvery = 180;
 
 SyncLoop = function(defaults) {
     this.defaults = defaults;
@@ -25,6 +28,11 @@ SyncLoop = function(defaults) {
     this.loadProgress = [];
     this.audio = null;
     this.images = [];
+    this.imageSequence = true;
+    
+    this.video = null;
+    // sync for the first frame
+    this.videoSync = videoSyncEvery;
     this.canvas = document.getElementById(defaults.canvasID).getContext("2d");
     this.lastFrame = -1;
     
@@ -61,8 +69,16 @@ SyncLoop = function(defaults) {
 }
 
 SyncLoop.prototype.loadResources = function(callback) {
-    // anim frames + song file
-    this.toLoad = this.defaults.animation.frames + 1;
+    var that = this;
+    // todo probably a better way than a ternary
+    this.imageSequence = this.defaults.animation.filename ? true : false;
+    if(this.imageSequence) {
+        // anim frames + song file
+        this.toLoad = this.defaults.animation.frames + 1;
+    } else {
+        this.toLoad = 2;
+    }
+    
     this.loadProgress = [];
     for(var i = 0; i < this.toLoad; i++) {
         this.loadProgress[i] = 0;
@@ -70,18 +86,56 @@ SyncLoop.prototype.loadResources = function(callback) {
     
     this.loadSong(this.defaults.song.filename);
     
-    var img = this.defaults.animation.filename;
-    // NOTE: 1 indexed
-    for(var i = 1; i <= this.defaults.animation.frames; i++) {
-        this.loadImage(img.replace("%FRAME%", i), i);
+    if(this.imageSequence) {
+        // NOTE: 1 indexed
+        for(var i = 1; i <= this.defaults.animation.frames; i++) {
+            this.loadImage(this.defaults.animation.filename.replace("%FRAME%", i), i);
+        }
+    } else { // video
+        this.video = document.createElement('video');
+        var source = document.createElement('source');    
+        source.src = this.defaults.animation.video;
+        source.type = "video/webm";
+        this.video.appendChild(source);
+        var handler = function() {
+            var video = that.video;
+            if( video.duration ) {
+                var percent = 0;
+                if(video.buffered.length > 0) {
+                    var percent = (video.buffered.end(0)/video.duration);
+                }
+                if( percent >= 1.0 ) {
+                    console.log("Video load complete");
+                    that.loadProgress[1] = 1;
+                    that.video.removeEventListener("progress", handler);
+                    that.loadComplete();
+                    return;
+                }
+                that.loadProgress[1] = percent;
+                video.currentTime++;    
+            }   
+        }
+        this.video.loop = true;
+        this.video.addEventListener("progress", handler,false);
+        document.body.appendChild(this.video);
     }
 }
 
 SyncLoop.prototype.loadComplete = function() {
+    var that = this;
     this.updateProgress();
     if(--this.toLoad <= 0) {
         this.resize();
         this.soundManager.playSong(this.audio, function() {
+            if(!that.imageSequence) {
+                that.canvas.canvas.style.display = "none";
+                var vidlen = that.video.duration;
+                var audlen = that.soundManager.buffer.duration;
+                var loops = that.defaults.song.beatsPerLoop / that.defaults.animation.beatsPerLoop;
+                var ratio = (loops * vidlen) / audlen;
+                that.video.playbackRate = ratio;
+                that.video.play();
+            }
             document.getElementById("preloadHelper").className = "loaded";
             window.setTimeout(function() {
                 document.getElementById("preloadHelper").style.display = "none";
@@ -142,21 +196,32 @@ SyncLoop.prototype.animationLoop = function() {
         return;
     }
     var now = this.soundManager.currentTime();
+    
     var songBeats = this.defaults.song.beatsPerLoop;
     var animBeats = this.defaults.animation.beatsPerLoop;
-    
     var songBeat = songBeats * this.soundManager.currentProgress();
-    var animProgress = (this.images.length / animBeats) * songBeat;
-    var frame = Math.floor(animProgress);
-    if(this.defaults.animation.syncOffset) {
-        frame += this.defaults.animation.syncOffset;
-    }
-    frame %= this.images.length
-    if(frame != this.lastFrame) {
-        this.lastFrame = frame;
-        // Clear
-        this.canvas.canvas.width = this.canvas.canvas.width;
-        this.canvas.drawImage(this.images[frame], 0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
+    if(this.imageSequence) {
+        var animProgress = (this.images.length / animBeats) * songBeat;
+        var frame = Math.floor(animProgress);
+        if(this.defaults.animation.syncOffset) {
+            frame += this.defaults.animation.syncOffset;
+        }
+        frame %= this.images.length
+        if(frame != this.lastFrame) {
+            this.lastFrame = frame;
+            // Clear
+            this.canvas.canvas.width = this.canvas.canvas.width;
+            this.canvas.drawImage(this.images[frame], 0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
+        }
+    } else {
+        if(++this.videoSync >= videoSyncEvery) {
+            this.videoSync = 0;
+            var animProgress = (this.video.duration / animBeats) * songBeat;
+            if(this.defaults.animation.syncOffset) {
+                animProgress += this.defaults.animation.syncOffset;
+            }
+            this.video.currentTime = animProgress % this.video.duration;
+        }
     }
 }
 
@@ -164,11 +229,20 @@ SyncLoop.prototype.resize = function() {
     if(this.toLoad > 0) {
         return;
     }
-    var elem = this.canvas.canvas;
     
+    var elem = null;
+    var width = 0;
+    var height = 0;
     // Set unscaled
-    var width = this.images[0].width;
-    var height = this.images[0].height;
+    if(this.imageSequence) {
+        elem = this.canvas.canvas;
+        width = this.images[0].width;
+        height = this.images[0].height;
+    } else {
+        elem = this.video;
+        width = elem.videoWidth;
+        height = elem.videoHeight;
+    }
     var ratio = width / height;
     
     var scaleWidth = window.innerHeight * ratio;
