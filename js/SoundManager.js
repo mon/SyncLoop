@@ -72,7 +72,7 @@ function SoundManager() {
         source.connect( that.context.destination);
 
         // play the file
-        source.noteOn(0);
+        source.start(0);
 
     }, false);
 }
@@ -89,16 +89,25 @@ SoundManager.prototype.playSong = function(arrayBuffer, callback) {
         that.bufSource.connect(that.gainNode);
         
         // This fixes sync issues on Firefox and slow machines.
-        that.context.suspend().then(function() {
+        if(that.context.suspend && that.context.resume) {
+            that.context.suspend().then(function() {
+                that.bufSource.start(0);
+                that.startTime = that.context.currentTime;
+                that.context.resume().then(function() {
+                    that.playing = true;
+                    if(callback) {
+                        callback();
+                    }
+                });
+            });
+        } else {
             that.bufSource.start(0);
             that.startTime = that.context.currentTime;
-            that.context.resume().then(function() {
-                that.playing = true;
-                if(callback) {
-                    callback();
-                }
-            });
-        });
+            that.playing = true;
+            if(callback) {
+                callback();
+            }
+        }
     }, function() {
         console.log('Error decoding audio.');
     });
