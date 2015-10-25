@@ -24,12 +24,14 @@ html, body {
     top: 0;
     left: 0;
     z-index: 10;
+    visibility: visible;
     opacity: 1;
-    transition: opacity 1s linear;
-    -webkit-transition: opacity 1s linear;
+    transition: visibility 1s linear, opacity 1s linear;
+    -webkit-transition: visibility 1s linear, opacity 1s linear;
 }
 
 #preloadHelper.loaded {
+    visibility: hidden;
     opacity: 0;
 }
 

@@ -73,7 +73,12 @@ SyncLoop.prototype.loadResources = function(callback) {
     var img = this.defaults.animation.filename;
     // NOTE: 1 indexed
     for(var i = 1; i <= this.defaults.animation.frames; i++) {
-        this.loadImage(img.replace("%FRAME%", i), i);
+        var n = i + '';
+        var width = this.defaults.animation.frameTextPadding;
+        if(width) {
+            n = n.length >= width ? n : new Array(width - n.length + 1).join('0') + n;
+        }
+        this.loadImage(img.replace("%FRAME%", n), i);
     }
 }
 
@@ -83,9 +88,6 @@ SyncLoop.prototype.loadComplete = function() {
         this.resize();
         this.soundManager.playSong(this.audio, function() {
             document.getElementById("preloadHelper").className = "loaded";
-            window.setTimeout(function() {
-                document.getElementById("preloadHelper").style.display = "none";
-            }, 1500);
         });
     }
 }
