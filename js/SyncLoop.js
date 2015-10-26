@@ -18,9 +18,6 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  * THE SOFTWARE.
  */
- 
-// how many frames before we resync the video
-var videoSyncEvery = 180;
 
 SyncLoop = function(defaults) {
     this.defaults = defaults;
@@ -31,8 +28,7 @@ SyncLoop = function(defaults) {
     this.imageSequence = true;
     
     this.video = null;
-    // sync for the first frame
-    this.videoSync = videoSyncEvery;
+    this.playbackRate = 1;
     this.canvas = document.getElementById(defaults.canvasID).getContext("2d");
     this.lastFrame = -1;
     
@@ -51,6 +47,15 @@ SyncLoop = function(defaults) {
     if(!this.soundManager.canUse) {
         this.error(this.soundManager.errorMsg);
         return;
+    }
+    console.log("SoundManager ready...");
+    
+    if(!this.defaults.animation.filename) {
+        var test = document.createElement("video");
+        if(!test.playbackRate) {
+            this.error("Video playback rate not alterable :(");
+            return;
+        }
     }
     
     this.loadResources();
@@ -97,7 +102,7 @@ SyncLoop.prototype.loadResources = function(callback) {
         source.src = this.defaults.animation.video;
         source.type = "video/webm";
         this.video.appendChild(source);
-        var handler = function() {
+        /*var handler = function() {
             var video = that.video;
             if( video.duration ) {
                 var percent = 0;
@@ -114,9 +119,19 @@ SyncLoop.prototype.loadResources = function(callback) {
                 that.loadProgress[1] = percent;
                 video.currentTime++;    
             }   
-        }
+        }*/
+        this.video.addEventListener("videoEnd", function() {
+            that.video.loop = true;
+            that.video.play();
+        });
+        that.loadProgress[1] = 1; //debug shit
+        this.video.addEventListener('loadeddata', function() {
+           that.loadComplete();
+        }, false);
         this.video.loop = true;
-        this.video.addEventListener("progress", handler,false);
+        this.video.controls = true;
+        //this.video.addEventListener("progress", handler,false);
+        
         document.body.appendChild(this.video);
     }
 }
@@ -124,22 +139,24 @@ SyncLoop.prototype.loadResources = function(callback) {
 SyncLoop.prototype.loadComplete = function() {
     var that = this;
     this.updateProgress();
+    document.getElementById("preloadHelper").className = "loaded";
+    window.setTimeout(function() {
+        document.getElementById("preloadHelper").style.display = "none";
+    }, 1500);
     if(--this.toLoad <= 0) {
         this.resize();
         this.soundManager.playSong(this.audio, function() {
             if(!that.imageSequence) {
                 that.canvas.canvas.style.display = "none";
                 var vidlen = that.video.duration;
+                console.log("Video length", vidlen);
                 var audlen = that.soundManager.buffer.duration;
+                console.log("Audio length", audlen);
                 var loops = that.defaults.song.beatsPerLoop / that.defaults.animation.beatsPerLoop;
-                var ratio = (loops * vidlen) / audlen;
-                that.video.playbackRate = ratio;
+                that.playbackRate = (loops * vidlen) / audlen;
+                that.video.playbackRate = this.playbackRate;
                 that.video.play();
             }
-            document.getElementById("preloadHelper").className = "loaded";
-            window.setTimeout(function() {
-                document.getElementById("preloadHelper").style.display = "none";
-            }, 1500);
         });
     }
 }
@@ -214,14 +231,18 @@ SyncLoop.prototype.animationLoop = function() {
             this.canvas.drawImage(this.images[frame], 0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
         }
     } else {
-        if(++this.videoSync >= videoSyncEvery) {
-            this.videoSync = 0;
-            var animProgress = (this.video.duration / animBeats) * songBeat;
-            if(this.defaults.animation.syncOffset) {
-                animProgress += this.defaults.animation.syncOffset;
-            }
-            this.video.currentTime = animProgress % this.video.duration;
+        this.videoSync = 0;
+        var animProgress = (this.video.duration / animBeats) * songBeat;
+        if(this.defaults.animation.syncOffset) {
+            animProgress += this.defaults.animation.syncOffset;
         }
+        var shouldBe = (animProgress % this.video.duration);
+        var error = this.video.currentTime - shouldBe;
+        if(error < -this.video.duration/2) error += this.video.duration;
+        if(error > this.video.duration/2) error -= this.video.duration;
+        error /= this.video.duration; // percentage
+        var rate = this.playbackRate * (1 - error*5);
+        this.video.playbackRate = Math.max(0, rate);
     }
 }
 
@@ -242,6 +263,15 @@ SyncLoop.prototype.resize = function() {
         elem = this.video;
         width = elem.videoWidth;
         height = elem.videoHeight;
+    }
+    console.log("Resizing: width", width, "height", height);
+    // Video not loaded yet?
+    if(width == 0 || height == 0) {
+        elem.style.height = "100%";
+        elem.style.width = "100%";
+        elem.style.marginLeft = 0;
+        elem.style.marginTop = 0;
+        return;
     }
     var ratio = width / height;
     
