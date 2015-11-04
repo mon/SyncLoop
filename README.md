@@ -9,3 +9,5 @@ Some examples:
 [Life In a Nutshell](http://loop.mon.im/LifeInANutshell.html)  
 
 All examples are converted from wonderful flash loops by Pyure and AMM.
+
+The videosync branch has very rough test code for using HTML5 video elements instead of canvas. It works very well on desktop by dynamically scaling playbackRate, but has 0 support on mobile, so I dropped it.
