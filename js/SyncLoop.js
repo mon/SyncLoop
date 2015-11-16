@@ -27,6 +27,11 @@ SyncLoop = function(defaults) {
     this.images = [];
     this.canvas = document.getElementById(defaults.canvasID).getContext("2d");
     this.lastFrame = -1;
+    this.frames = [];
+    
+    // For custom song timing
+    this.lastBeat = -1;
+    this.beatOffset = 0;
     
     var that = this;
     window.onerror = function(msg, url, line, col, error) {
@@ -86,6 +91,9 @@ SyncLoop.prototype.loadComplete = function() {
     this.updateProgress();
     if(--this.toLoad <= 0) {
         this.resize();
+        for(var i = 0; i < this.defaults.animation.frames; i++) {
+            this.frames.push(i);
+        }
         this.soundManager.playSong(this.audio, function() {
             document.getElementById("preloadHelper").className = "loaded";
         });
