@@ -93,16 +93,41 @@ SyncLoop.prototype.loadComplete = function() {
     this.updateProgress();
     if(--this.toLoad <= 0) {
         this.resize();
-        for(var i = 0; i < this.defaults.animation.frames; i++) {
-            this.frames.push(i);
+        // for weird loop back/forwards animations
+        var keyframes = this.defaults.animation.frameKeyframes;
+        if(keyframes) {
+            //this.frames.push(keyframes[0]-1); // first frame inclusive
+            for(var i = 0; i < keyframes.length-1; i++) {
+                var a = keyframes[i];
+                var b = keyframes[i+1];
+                if(b < a) {
+                    for(var j = a; j > b; j--) {
+                        this.frames.push(j-1);
+                    }
+                } else {
+                    for(var j = a; j < b; j++) {
+                        this.frames.push(j-1);
+                    }
+                }
+            }
+            this.frames.push(j-1); // last frame inclusive
+        } else {
+            for(var i = 0; i < this.defaults.animation.frames; i++) {
+                this.frames.push(i);
+            }
         }
         var beats = this.defaults.animation.beats;
         if(beats) {
             var i = 0;
-            for(i = 0; i < beats.length; i++) {
-                // This goes out of bounds, but slice defaults undefined to
-                // array limits for us :>
-                this.animTiming.push(this.frames.slice(beats[i-1], beats[i]));
+            for(i = 1; i <= beats.length; i++) {
+                var tail = undefined;
+                if(i != beats.length) {
+                    tail = beats[i]-1;
+                }
+                this.animTiming.push(this.frames.slice(beats[i-1]-1, tail));
+            }
+            for(i = 1; i < beats[0]; i++) {
+                this.animTiming[this.animTiming.length-1].push(this.frames[i-1]);
             }
         }
         this.soundManager.playSong(this.audio, function() {
@@ -162,7 +187,6 @@ SyncLoop.prototype.animationLoop = function() {
     if(!this.soundManager.playing) {
         return;
     }
-    var now = this.soundManager.currentTime();
     
     var songBeat = this.getSongBeat();
     var frame = this.getAnimFrame(songBeat);
