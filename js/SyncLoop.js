@@ -32,6 +32,8 @@ SyncLoop = function(defaults) {
     // For custom song timing
     this.lastBeat = -1;
     this.beatOffset = 0;
+    // For custom animation timing
+    this.animTiming = [];
     
     var that = this;
     window.onerror = function(msg, url, line, col, error) {
@@ -94,6 +96,15 @@ SyncLoop.prototype.loadComplete = function() {
         for(var i = 0; i < this.defaults.animation.frames; i++) {
             this.frames.push(i);
         }
+        var beats = this.defaults.animation.beats;
+        if(beats) {
+            var i = 0;
+            for(i = 0; i < beats.length; i++) {
+                // This goes out of bounds, but slice defaults undefined to
+                // array limits for us :>
+                this.animTiming.push(this.frames.slice(beats[i-1], beats[i]));
+            }
+        }
         this.soundManager.playSong(this.audio, function() {
             document.getElementById("preloadHelper").className = "loaded";
         });
@@ -152,22 +163,59 @@ SyncLoop.prototype.animationLoop = function() {
         return;
     }
     var now = this.soundManager.currentTime();
-    var songBeats = this.defaults.song.beatsPerLoop;
-    var animBeats = this.defaults.animation.beatsPerLoop;
     
+    var songBeat = this.getSongBeat();
+    var frame = this.getAnimFrame(songBeat);
+    var imgFrame = this.frames[frame];
+    
+    if(imgFrame != this.lastFrame) {
+        this.lastFrame = imgFrame;
+        // Clear
+        this.canvas.canvas.width = this.canvas.canvas.width;
+        this.canvas.drawImage(this.images[imgFrame], 0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
+    }
+}
+
+SyncLoop.prototype.getSongBeat = function() {
+    var songBeats = this.defaults.song.beatsPerLoop || this.defaults.song.beatmap.length;
     var songBeat = songBeats * this.soundManager.currentProgress();
-    var animProgress = (this.images.length / animBeats) * songBeat;
-    var frame = Math.floor(animProgress);
+    var beatmap = this.defaults.song.beatmap;
+    if(beatmap) {
+        while(this.lastBeat < songBeat) {
+            if(beatmap[Math.floor(this.lastBeat++ % songBeats)] == ".") {
+                this.beatOffset++;
+            }
+        }
+        if(beatmap[Math.floor(this.lastBeat % songBeats)] == ".") {
+            songBeat = Math.floor(songBeat);
+        }
+    }
+    return songBeat - this.beatOffset; 
+}
+
+SyncLoop.prototype.getAnimFrame = function(songBeat) {
+    var frame = 0;
+    var animBeats = this.defaults.animation.beatsPerLoop || this.animTiming.length;
+    if(this.animTiming.length) { // custom beat endpoints
+        songBeat %= animBeats;
+        var beatFrames = this.animTiming[Math.floor(songBeat)];
+        frame = beatFrames[Math.floor(beatFrames.length * (songBeat % 1))];
+    } else {
+        var animProgress = (this.frames.length / animBeats) * songBeat;
+        frame = Math.floor(animProgress);
+    }
+    
     if(this.defaults.animation.syncOffset) {
         frame += this.defaults.animation.syncOffset;
     }
-    frame %= this.images.length
-    if(frame != this.lastFrame) {
-        this.lastFrame = frame;
-        // Clear
-        this.canvas.canvas.width = this.canvas.canvas.width;
-        this.canvas.drawImage(this.images[frame], 0, 0, this.canvas.canvas.width, this.canvas.canvas.height);
-    }
+    
+    frame = this.mod(frame, this.frames.length);
+    
+    return frame;
+}
+
+SyncLoop.prototype.mod = function(num, n) {
+    return ((num%n)+n)%n;
 }
 
 SyncLoop.prototype.resize = function() {
