@@ -116,6 +116,10 @@ SyncLoop.prototype.loadComplete = function() {
                 this.frames.push(i);
             }
         }
+        // back and forth, forever
+        if(this.defaults.animation.pingpong) {
+            this.frames = this.frames.concat(this.frames.slice(1).reverse().slice(1));
+        }
         var beats = this.defaults.animation.beats;
         if(beats) {
             var i = 0;
