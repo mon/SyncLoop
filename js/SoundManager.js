@@ -25,21 +25,21 @@ var LAME_DELAY_END = 1000;
 
 function SoundManager() {
     this.playing = false;
-    
+
     /* Lower level audio and timing info */
     this.bufSource = null;
     this.buffer = null;
     this.context = null; // Audio context, Web Audio API
     this.startTime = 0;  // File start time - 0 is loop start, not build start
-    
+
     // Volume
     this.gainNode = null;
     this.mute = false;
     this.lastVol = 1;
-    
+
     // In case of API non-support
     this.canUse = true;
-    
+
     // Check Web Audio API Support
     try {
         // More info at http://caniuse.com/#feat=audio-api
@@ -60,7 +60,7 @@ function SoundManager() {
         this.errorMsg = "MP3 not supported in this browser.";
         return;
     }
-    
+
     var that = this;
     window.addEventListener('touchend', function() {
         // create empty buffer
@@ -80,14 +80,14 @@ function SoundManager() {
 SoundManager.prototype.playSong = function(arrayBuffer, callback) {
     var that = this;
     this.stop();
-    
+
     this.context.decodeAudioData(arrayBuffer, function(buffer) {
         that.buffer = that.trimMP3(buffer);
         that.bufSource = that.context.createBufferSource();
         that.bufSource.buffer = that.buffer;
         that.bufSource.loop = true;
         that.bufSource.connect(that.gainNode);
-        
+
         // This fixes sync issues on Firefox and slow machines.
         if(that.context.suspend && that.context.resume) {
             that.context.suspend().then(function() {
@@ -138,11 +138,18 @@ SoundManager.prototype.currentProgress = function() {
 
 // because MP3 is bad, we nuke silence
 SoundManager.prototype.trimMP3 = function(buffer) {
-    // Firefox has to trim always
+    // Firefox < 71 has to trim always since it had a broken mp3 decoder
     var isFirefox = navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
     if(!(isFirefox)) {
         return buffer;
     }
+
+    var match = window.navigator.userAgent.match(/Firefox\/([0-9]+)\./);
+    var ver = match ? parseInt(match[1]) : 0;
+    if(ver >= 71) {
+        return buffer;
+    }
+
     var start = LAME_DELAY_START;
     var newLength = buffer.length - LAME_DELAY_START - LAME_DELAY_END;
     var ret = this.context.createBuffer(buffer.numberOfChannels, newLength, buffer.sampleRate);
