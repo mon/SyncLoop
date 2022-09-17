@@ -61,20 +61,37 @@ function SoundManager() {
         return;
     }
 
+    this.locked = this.context.state != "running";
+}
+
+SoundManager.prototype.unlock = function() {
+    if(this.lockedPromise) {
+        return this.lockedPromise;
+    }
     var that = this;
-    window.addEventListener('touchend', function() {
-        // create empty buffer
-        var buffer = that.context.createBuffer(1, 1, 22050);
-        var source =  that.context.createBufferSource();
-        source.buffer = buffer;
+    this.lockedPromise = new Promise(function(resolve) {
+        // iOS and other some mobile browsers - unlock the context as
+        // it starts in a suspended state
+        function unlocker() {
+            // create empty buffer
+            var buffer = that.context.createBuffer(1, 1, 22050);
+            var source =  that.context.createBufferSource();
+            source.buffer = buffer;
 
-        // connect to output (your speakers)
-        source.connect( that.context.destination);
+            // connect to output (your speakers)
+            source.connect(that.context.destination);
 
-        // play the file
-        source.start(0);
+            // play the file
+            source.start(0);
 
-    }, false);
+            window.removeEventListener('touchend', unlocker);
+            window.removeEventListener('click', unlocker);
+            resolve();
+        }
+        window.addEventListener('touchend', unlocker, false);
+        window.addEventListener('click', unlocker, false);
+    });
+    return this.lockedPromise;
 }
 
 SoundManager.prototype.playSong = function(arrayBuffer, callback) {

@@ -28,13 +28,13 @@ SyncLoop = function(defaults) {
     this.canvas = document.getElementById(defaults.canvasID).getContext("2d");
     this.lastFrame = -1;
     this.frames = [];
-    
+
     // For custom song timing
     this.lastBeat = -1;
     this.beatOffset = 0;
     // For custom animation timing
     this.animTiming = [];
-    
+
     var that = this;
     window.onerror = function(msg, url, line, col, error) {
         that.error(msg);
@@ -44,14 +44,21 @@ SyncLoop = function(defaults) {
     window.onresize = function() {
         that.resize();
     }
-    
+
     console.log("SyncLoop init...");
     this.soundManager = new SoundManager(this);
     if(!this.soundManager.canUse) {
         this.error(this.soundManager.errorMsg);
         return;
     }
-    
+
+    if(this.soundManager.locked) {
+        document.getElementById("preSub").textContent = "Click to unlock audio playback";
+        this.soundManager.unlock().then(function() {
+            document.getElementById("preSub").textContent = "";
+        });
+    }
+
     this.loadResources();
 
     document.onkeydown = function(e){
@@ -63,7 +70,7 @@ SyncLoop = function(defaults) {
         var key = e.keyCode || e.which;
         return that.keyHandler(key);
     };
-    
+
     this.animationLoop();
 }
 
@@ -74,9 +81,9 @@ SyncLoop.prototype.loadResources = function(callback) {
     for(var i = 0; i < this.toLoad; i++) {
         this.loadProgress[i] = 0;
     }
-    
+
     this.loadSong(this.defaults.song.filename);
-    
+
     var img = this.defaults.animation.filename;
     // NOTE: 1 indexed
     for(var i = 1; i <= this.defaults.animation.frames; i++) {
@@ -191,11 +198,11 @@ SyncLoop.prototype.animationLoop = function() {
     if(!this.soundManager.playing) {
         return;
     }
-    
+
     var songBeat = this.getSongBeat();
     var frame = this.getAnimFrame(songBeat);
     var imgFrame = this.frames[frame];
-    
+
     if(imgFrame != this.lastFrame) {
         this.lastFrame = imgFrame;
         // Clear
@@ -218,7 +225,7 @@ SyncLoop.prototype.getSongBeat = function() {
             songBeat = Math.floor(songBeat);
         }
     }
-    return songBeat - this.beatOffset; 
+    return songBeat - this.beatOffset;
 }
 
 SyncLoop.prototype.getAnimFrame = function(songBeat) {
@@ -232,13 +239,13 @@ SyncLoop.prototype.getAnimFrame = function(songBeat) {
         var animProgress = (this.frames.length / animBeats) * songBeat;
         frame = Math.floor(animProgress);
     }
-    
+
     if(this.defaults.animation.syncOffset) {
         frame += this.defaults.animation.syncOffset;
     }
-    
+
     frame = this.mod(frame, this.frames.length);
-    
+
     return frame;
 }
 
@@ -251,12 +258,12 @@ SyncLoop.prototype.resize = function() {
         return;
     }
     var elem = this.canvas.canvas;
-    
+
     // Set unscaled
     var width = this.images[0].width;
     var height = this.images[0].height;
     var ratio = width / height;
-    
+
     var scaleWidth = window.innerHeight * ratio;
     if(scaleWidth > window.innerWidth) {
         elem.height = Math.floor(window.innerWidth / ratio);
@@ -267,7 +274,7 @@ SyncLoop.prototype.resize = function() {
     }
     elem.style.height = elem.height + "px";
     elem.style.width = elem.width + "px";
-    
+
     elem.style.marginLeft = (window.innerWidth - elem.width) / 2 + "px";
     elem.style.marginTop = (window.innerHeight - elem.height) / 2 + "px";
 }
